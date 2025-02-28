@@ -1,2 +1,9 @@
-# Tiny-Search-Engine
-Tiny Search Engine is a program that crawls through webpages, indexes them by doc ID and word count, and then allows users to search through webpages for specific words
+# CS50 TSE
+## Kyla Widodo (kylawidodo1)
+
+The assignment and Specs are in a [public repo](https://github.com/CS50Spring2023/labs/tse).
+Do not clone that repo; view it on GitHub.
+Watch there for any commits that may represent updates to the assignment or specs.
+
+Add here any assumptions you made while writing the crawler, any ways in which your implementation differs from the three Specs, or any ways in which you know your implementation fails to work.
+

@@ -1,0 +1,161 @@
+ml () {  module ml "$@"
+}
+module () {  _module_raw "$@" 2>&1
+}
+_module_raw () {  eval `/usr/bin/tclsh8.6 /usr/lib/x86_64-linux-gnu/modulecmd.tcl bash "$@"`;
+ _mlstatus=$?;
+ return $_mlstatus
+}
+#!/bin/bash
+# testing.sh     Kyla Widodo     May 4, 2023
+
+# Integration testing
+# The indexer, as a complete program, will be tested by building an index from a pageDirectory,
+# and then the resulting index will be validated by running it through the indextest to ensure it can be loaded
+
+make clean
+make[1]: Entering directory '/thayerfs/home/f00564y/cs50-dev/tse-kylawidodo1/indexer'
+rm -rf *.dSYM  # MacOS debugger info
+rm -f *~ *.o
+rm -f indexer
+rm -f index
+rm -f test
+rm -f compiletest
+rm -rf ../data-index
+make[1]: Leaving directory '/thayerfs/home/f00564y/cs50-dev/tse-kylawidodo1/indexer'
+
+# Function to clean up and create directories
+create_directory() {
+    if [ -e "$1" ]
+    then
+        rm -rf "$1"
+    fi
+    mkdir -p "$1"   
+}
+
+# Create directories
+create_directory "../data-index"
+create_directory "../data-index/letters-depth-2"
+
+cd ../crawler;
+make;
+make[1]: Entering directory '/thayerfs/home/f00564y/cs50-dev/tse-kylawidodo1/crawler'
+make[1]: 'crawler' is up to date.
+make[1]: Leaving directory '/thayerfs/home/f00564y/cs50-dev/tse-kylawidodo1/crawler'
+./crawler http://cs50tse.cs.dartmouth.edu/tse/letters/ ../data-index/letters-depth-2 2
+0 Fetched: http://cs50tse.cs.dartmouth.edu/tse/letters/
+0 Scannning: http://cs50tse.cs.dartmouth.edu/tse/letters/
+1 Fetched: http://cs50tse.cs.dartmouth.edu/tse/letters/A.html
+1 Scannning: http://cs50tse.cs.dartmouth.edu/tse/letters/A.html
+2 Fetched: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+2 Fetched: http://cs50tse.cs.dartmouth.edu/tse/letters/B.html
+0 Found: http://cs50tse.cs.dartmouth.edu/tse/letters/A.html
+0 Added: http://cs50tse.cs.dartmouth.edu/tse/letters/A.html
+1 Found: https://en.wikipedia.org/wiki/Algorithm
+1 IgnExtrn: https://en.wikipedia.org/wiki/Algorithm
+1 Found: http://cs50tse.cs.dartmouth.edu/tse/letters/B.html
+1 Added: http://cs50tse.cs.dartmouth.edu/tse/letters/B.html
+1 Found: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+1 Added: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+cd ../indexer
+make all
+make[1]: Entering directory '/thayerfs/home/f00564y/cs50-dev/tse-kylawidodo1/indexer'
+gcc -Wall -pedantic -std=c11 -ggdb -I ../libcs50 -I../common   -c -o indexer.o indexer.c
+gcc -Wall -pedantic -std=c11 -ggdb -I ../libcs50 -I../common indexer.o ../common/common.a ../libcs50/libcs50-given.a ../common/common.a ../libcs50/libcs50-given.a -o indexer
+gcc -Wall -pedantic -std=c11 -ggdb -I ../libcs50 -I../common   -c -o indextest.o indextest.c
+gcc -Wall -pedantic -std=c11 -ggdb -I ../libcs50 -I../common indextest.o ../common/common.a ../libcs50/libcs50-given.a -o indextest
+make[1]: Leaving directory '/thayerfs/home/f00564y/cs50-dev/tse-kylawidodo1/indexer'
+
+
+# Test indexer with various invalid arguments
+# 1. No arguments
+./indexer
+Usage: ./indexer pageDirectory indexFilename
+
+# 2. One argument
+./indexer ../data-index/letters-depth-2 
+Usage: ./indexer pageDirectory indexFilename
+
+# 3. Three or more arguments 
+./indexer ../data-index/letters-depth-2 indexFile1 indexFile2 
+Usage: ./indexer pageDirectory indexFilename
+
+# 4. Invalid pageDirectory (non-existent path) 
+./indexer ../data-index/l-depth indexFile1
+Error: Unable to read a file named pageDirectory/.crawler
+Error: pageDirectory doesn't contain valid crawler output
+
+# 5. Invalid pageDirectory (not a crawler directory) 
+create_directory "../data-index/notcrawler"
+./indexer ../data-index/notcrawler indexFile1
+Error: Unable to read a file named pageDirectory/.crawler
+Error: pageDirectory doesn't contain valid crawler output
+
+# 6. Invalid indexFile (non-existent path) 
+./indexer ../data-index/lettersh-2 ../dat/ldepth
+Error: Unable to read a file named pageDirectory/.crawler
+Error: pageDirectory doesn't contain valid crawler output
+
+# 7. Invalid indexFile (read-only directory)
+./indexer ../data-index/letters-depth-2 ../data-index
+Error: Unable to write a file named indexFilename
+
+# 8. Invalid indexFile (existing, read-only file)
+touch rofile
+chmod a-w rofile
+./indexer ../data-index/letters-depth-2 rofile
+Error: Unable to write a file named indexFilename
+
+rm -rf rofile
+
+# Run indexer on a variety of pageDirectories and use indextest and indexcmp to validate resulting index
+create_directory "../data-index/indices"
+
+./indexer ../data-index/letters-depth-2 ../data-index/indices/letters-2
+./indexer ~/cs50-dev/shared/tse/output/toscrape-1 ../data-index/indices/toscrape-1
+./indexer ~/cs50-dev/shared/tse/output/wikipedia_2 ../data-index/indices/wikipedia_2
+
+./indextest ../data-index/indices/letters-2 ../data-index/indices/letters-2-copy
+./indextest ../data-index/indices/toscrape-1 ../data-index/indices/toscrape-1-copy
+./indextest ../data-index/indices/wikipedia_2 ../data-index/indices/wikipedia_2-copy
+~/cs50-dev/shared/tse/indexcmp ../data-index/indices/letters-2 ../data-index/indices/letters-2-copy
+~/cs50-dev/shared/tse/indexcmp ../data-index/indices/toscrape-1 ../data-index/indices/toscrape-1-copy
+~/cs50-dev/shared/tse/indexcmp ../data-index/indices/wikipedia_2 ../data-index/indices/wikipedia_2-copy
+
+# Run valgrind on both indexer and indextest -- Ensure no memory leaks or errors
+valgrind ./indexer ../data-index/letters-depth-2 ../data-index/indices/letters-2
+==4174342== Memcheck, a memory error detector
+==4174342== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==4174342== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
+==4174342== Command: ./indexer ../data-index/letters-depth-2 ../data-index/indices/letters-2
+==4174342== 
+==4174342== 
+==4174342== HEAP SUMMARY:
+==4174342==     in use at exit: 472 bytes in 1 blocks
+==4174342==   total heap usage: 606 allocs, 605 frees, 85,187 bytes allocated
+==4174342== 
+==4174342== LEAK SUMMARY:
+==4174342==    definitely lost: 0 bytes in 0 blocks
+==4174342==    indirectly lost: 0 bytes in 0 blocks
+==4174342==      possibly lost: 0 bytes in 0 blocks
+==4174342==    still reachable: 472 bytes in 1 blocks
+==4174342==         suppressed: 0 bytes in 0 blocks
+==4174342== Rerun with --leak-check=full to see details of leaked memory
+==4174342== 
+==4174342== For lists of detected and suppressed errors, rerun with: -s
+==4174342== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+valgrind ./indextest ../data-index/indices/letters-2 ../data-index/indices/letters-2-copy
+==4174355== Memcheck, a memory error detector
+==4174355== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==4174355== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
+==4174355== Command: ./indextest ../data-index/indices/letters-2 ../data-index/indices/letters-2-copy
+==4174355== 
+==4174355== 
+==4174355== HEAP SUMMARY:
+==4174355==     in use at exit: 0 bytes in 0 blocks
+==4174355==   total heap usage: 85 allocs, 85 frees, 19,273 bytes allocated
+==4174355== 
+==4174355== All heap blocks were freed -- no leaks are possible
+==4174355== 
+==4174355== For lists of detected and suppressed errors, rerun with: -s
+==4174355== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
